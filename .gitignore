@@ -1,2 +1,8 @@
-node_modules/
+node_modules/*
+!node_modules/torfactory/
+!node_modules/ec2factory/
+!node_modules/github/
+!node_modules/twitter/
+!node_modules/stackoverflow/
+
 *config.js
