@@ -1,0 +1,18 @@
+{ 
+  "name" : "claire",
+  "main" : "init.js",
+  "version" : "0.0.1",
+  "repository" : { 
+    "type" : "git" , 
+    "url" : "https://github.com/xiamike/claire"
+  },
+  "dependencies" : {
+    "q" : "1.0.1",
+    "underscore" : "1.7.0",
+    "knex" : "0.6.22",
+    "mysql" : "2.4.3",
+    "socks5-https-client" : "0.2.2",
+    "socks5-http-client" : "0.1.6",
+    "strftime" : "0.8.2"
+  }
+}
