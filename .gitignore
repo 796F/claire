@@ -4,6 +4,10 @@ node_modules/*
 !node_modules/github/
 !node_modules/twitter/
 !node_modules/stackoverflow/
+!node_modules/githubarchive/
+
+node_modules/githubarchive/node_modules/*
+
 
 *config.js
 data/
