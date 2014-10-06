@@ -7,3 +7,4 @@ node_modules/*
 
 *config.js
 data/
+*_example_data.json
