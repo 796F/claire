@@ -14,6 +14,7 @@ var BASE_QUERY = 'SELECT ' + COLUMNS.join(', ') + ' FROM githubarchive:github.ti
                  'ORDER BY created_at ASC';
 
 ONE_HOUR_IN_S = 60 * 60 * 1000;
+ONE_MINUTE_IN_S = 60 * 1000;
 
 Archive = {};
 
@@ -29,10 +30,12 @@ Archive.init = function(config) {
 Archive.run = function(options) {
   _authorize().then(function(){
     _updateData(0);
-  });
+  }, _authError);
 }
 
-_authorize = function() {
+/* PRIVATE */
+
+function _authorize () {
   return Q.Promise(function(resolve, reject, notify){
     Archive.authClient.authorize(function(err, tokens) {
       if (err) {
@@ -45,12 +48,18 @@ _authorize = function() {
   });
 }
 
-_updateData = function(i) {
+function _authError (err){
+  console.log('auth err', err);
+}
+
+function _updateData (i) {
   var repository_owner = Archive.targets[i].owner;
   var repository_name = Archive.targets[i].repo;
-  
+  console.log('_updateData', repository_owner, repository_name);
   return _getLatestDataForRepository(repository_owner, repository_name)
   .then(function(totalRows){
+    if(totalRows > 0) Data.aggregateRepository(repository_owner, repository_name);
+
     if(i+1 < Archive.targets.length) {
       return _updateData(i+1);
     }else{
@@ -60,10 +69,10 @@ _updateData = function(i) {
       })
     }
     
-  }, _handleError, Data.saveRows);
+  }, _latestDataError, Data.saveRows);
 }
 
-_getLatestDataForRepository = function(repository_owner, repository_name){
+function _getLatestDataForRepository (repository_owner, repository_name){
   //refresh token, then try the request.  
   return Q.Promise(function(resolve, reject, notify){
     //get the last time we scanned this repo.  
@@ -75,7 +84,7 @@ _getLatestDataForRepository = function(repository_owner, repository_name){
           console.log('query for', repository_owner, repository_name, 'starting from', last_scan_time);
           return vsprintf(BASE_QUERY, [repository_owner, repository_name, last_scan_time]);
         }, _refreshTokenError)
-        .then(_query, _queryError)
+        .then(_retriedQuery, _queryError)
         .then(function(result){
           var jobId = result.jobReference.jobId;
           var pageToken = result.pageToken;
@@ -86,25 +95,39 @@ _getLatestDataForRepository = function(repository_owner, repository_name){
           }
           //if more pages to go, paginate  
           if(pageToken){
+            console.log('paginating...')
             _paginate(jobId, pageToken, notify)
             .then(function(last_page){
               //end of data, resolve after last page is notified.  
+              console.log('last page got', result.totalRows)
               resolve(result.totalRows);
-            });
+            }, _paginateError);
           }else{
             resolve(result.totalRows);
           }
         });
-
-
       });
     });
 }
 
 function _refreshTokenError(err){
-  console.log(err);
+  console.log('refresh token error', err);
 }
 
+function _retriedQuery(query){
+  return _query(query)
+  .then(function(result){
+    if(result.jobComplete){
+      return result;
+    }else{
+      //incomplete job, most likely rate limited.  try again in a bit.  
+      console.log('incomplete result, waiting a minute then _query');
+      return Q.delay(ONE_MINUTE_IN_S).then(function(){
+        return _retriedQuery(query);
+      });
+    }
+  });
+}
 
 function _query(query){
   //execute a query on github archive, 
@@ -123,10 +146,10 @@ function _query(query){
       }
     };
     bq.jobs.query(options, function(err, result){
+      console.log('got query result, complete:', result.jobComplete, 'error', err);
       if(err){
         reject(err)
       }else{
-        if(result.totalRows == undefined) debugger;
         resolve(result);
       }
     });
@@ -138,22 +161,32 @@ function _queryError(err){
 }
 
 //calls nextPage in a loop on the dataset with next page token until we get all the data.  
-_paginate = function(jobId, pageToken, notify) {
+function _paginate (jobId, pageToken, notify) {
   return _nextPage(jobId, pageToken)
   .then(function(result){
-    notify(result.rows);
-    
-    //if token, paginate again.  else finish promise chain with simple return.
-    if(result.pageToken){
-      return _paginate(jobId, result.pageToken, notify);
+    if(result.jobComplete){
+      notify(result.rows);  
+      //if token, paginate again.  else finish promise chain with simple return.
+      if(result.pageToken){
+        return _paginate(jobId, result.pageToken, notify);
+      }else{
+        return result;
+      }
     }else{
-      return result;
+      //get page request did not complete, probably because of rate limit
+      return Q.delay(ONE_MINUTE_IN_S).then(function(){
+        console.log('job did not complete, waiting a minute then _paginate');
+        return _paginate(jobId, result.pageToken, notify);
+      });
     }
-  });
+  }, _nextPageError);
 }
 
+function _paginateError (err){
+  console.log('paginate err', err);
+}
 //requests a single page of our dataset using a page token.  
-_nextPage = function(jobId, pageToken) {
+function _nextPage (jobId, pageToken) {
   return Q.Promise(function(resolve, reject, notify){
     bq.jobs.getQueryResults({
       auth: Archive.authClient,
@@ -172,7 +205,11 @@ _nextPage = function(jobId, pageToken) {
   });
 }
 
-_refreshAuth = function() {
+function _nextPageError (err){
+  console.log('_nextPageError', err);
+}
+
+function _refreshAuth () {
   return Q.Promise(function(resolve, reject, notify){
     Archive.authClient.refreshToken_(undefined, function(err, result){
       if(err) {
@@ -187,8 +224,8 @@ function _handleResolve(totalRows){
   console.log('finished processing', totalRows, 'events');
 }
 
-function _handleError(err){
-  throw err;
+function _latestDataError(err){
+  console.log('_latestDataError', err);
 }
 
 module.exports = Archive;

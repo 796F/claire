@@ -1,7 +1,8 @@
 var knex = require('knex');
 var strftime = require('strftime');
 var Q = require('q');
-
+var aggregator = require('aggregator');
+debugger;
 var Data = {
   knex : undefined,
   schema : undefined
@@ -34,6 +35,21 @@ Data.lastScanTimeForRepository = function(repository_owner, repository_name){
     //if null, means we have not scanned that repository before.  return epoch
     return rows[0]['max(`created_at`)'] || strftime('%F %T', new Date(0));
   });
+}
+
+function _aggregateAndSave (data, T) {
+  // given data aggreagte by period T and save the aggregated values.  
+  // only save aggregations that are complete.  ie, if you do not hit the end of the period, do not save!
+  
+}
+
+Data.aggregateRepository = function(repository_owner, repository_name) {
+  //check when data was last aggregated
+
+  //get all data from last aggro, to present.  
+
+  //retrieve aggregated data and serve
+
 }
 
 /* PRIVATE */
