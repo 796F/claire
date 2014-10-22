@@ -1,12 +1,11 @@
-var Github = require('github');
-var Twitter = require('twitter');
-var SO = require('stackoverflow');
-var GithubArchive = require('githubarchive')
-
+var DataStreams = require('./streams');
+var Proxies = require('./proxies');
 var config = require('./config.js');
 
-GithubArchive.init(config);
-GithubArchive.run();
+for(var stream in DataStreams){
+  DataStreams[stream].init(config);
+  DataStreams[stream].run();
+}
 
 // var ProxyFactory = require('nonproxy').init(config.github_auth)
 // // var ProxyFactory = require('ec2factory').init(config.ec2)
@@ -19,12 +18,6 @@ GithubArchive.run();
 //     github_auth : config.github_auth
 //   });
 // });
-
-// Twitter.init(config);
-// Twitter.run();
-
-// SO.init(config);
-// SO.run();
 
 GLOBAL.debug = function(){
   if(DEBUG) {
