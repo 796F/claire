@@ -28,6 +28,8 @@ Archive.init = function(config) {
 }
 
 Archive.run = function(options) {
+  // Data.lastScanTimeForRepository('Famous', 'famous').then(console.log);
+  // Data.aggregateRepository('Famous', 'famous').then(console.log);
   _authorize().then(function(){
     _updateData(0);
   }, _authError);
@@ -58,7 +60,7 @@ function _updateData (i) {
   console.log('_updateData', repository_owner, repository_name);
   return _getLatestDataForRepository(repository_owner, repository_name)
   .then(function(totalRows){
-    if(totalRows > 0) Data.aggregateRepository(repository_owner, repository_name);
+    // if(totalRows > 0) Data.aggregateRepository(repository_owner, repository_name);
 
     if(i+1 < Archive.targets.length) {
       return _updateData(i+1);
@@ -146,10 +148,10 @@ function _query(query){
       }
     };
     bq.jobs.query(options, function(err, result){
-      console.log('got query result, complete:', result.jobComplete, 'error', err);
       if(err){
         reject(err)
       }else{
+        console.log('got query result, complete:', result.jobComplete);
         resolve(result);
       }
     });
@@ -162,6 +164,7 @@ function _queryError(err){
 
 //calls nextPage in a loop on the dataset with next page token until we get all the data.  
 function _paginate (jobId, pageToken, notify) {
+  console.log('paginate', arguments);
   return _nextPage(jobId, pageToken)
   .then(function(result){
     if(result.jobComplete){
