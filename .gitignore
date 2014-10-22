@@ -8,3 +8,6 @@ data/*
 # ignore nested node_modules for my custom modules
 streams/githubarchive/node_modules/
 proxies/torfactory/node_modules/
+# ignore ds store file and my notes
+.DS_Store
+NOTES
