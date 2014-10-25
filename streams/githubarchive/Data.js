@@ -1,7 +1,7 @@
 var knex = require('knex');
 var strftime = require('strftime');
 var Q = require('q');
-var aggregator = require('aggregator');
+var aggregator = require('../../lib/aggregator');
 
 var Data = {
   knex : undefined,
@@ -45,7 +45,6 @@ Data.lastTimeRepositoryAggregated = function (repository_owner, repository_name)
   .where('repository_name', '=', repository_name)
   .then(function(rows){
     //if null, means we have not aggregated that repository before.  return epoch
-    debugger;
     return rows[0]['max(`end_time`)'] || strftime('%F %T', new Date(0));
   });
 }
@@ -53,26 +52,37 @@ Data.lastTimeRepositoryAggregated = function (repository_owner, repository_name)
 Data.aggregateRepository = function(repository_owner, repository_name) {
   //check when data was last aggregated
   return Data.lastTimeRepositoryAggregated(repository_owner, repository_name)
-  .then(function(last_aggr_time){ 
+  .then(function(last_aggr_time){
+    console.log('aggr events for', repository_owner, repository_name, 'starting from', last_aggr_time);
     Data.getEventsForRepositoryAfterTimestamp(repository_owner, repository_name, last_aggr_time)
     .then(function(events){
+      //TODO 
+      // getting events works, now you need to use the aggregator you required to generate a number of aggregations.  
+      // use _aggregate
+      
       debugger;
+
     });
   });
-  //get all data from last aggro, to present.  
-
-  //retrieve aggregated data and serve
-
 }
 
 Data.getEventsForRepositoryAfterTimestamp = function (repository_owner, repository_name, start_time) {
   //ignore end_time right now, not needed.
-  debugger;
-  return Data.knex.table('github_events_aggregated')
+  return Data.knex.table('github_events')
   .select()
   .where('repository_owner', '=', repository_owner)
   .where('repository_name', '=', repository_name)
   .where('created_at', '>', strftime('%F %T', new Date(start_time)));
+}
+
+Data.getDistinctRepositoryNames = function() {
+  // select distinct 'first_name' from customers
+  return Data.knex.table('github_events')
+  .distinct('repository_owner', 'repository_name')
+  .select()
+  .then(function(rows) {
+    //TODO take the rows and format them into a proper data structure for the api.
+  });
 }
 
 /* PRIVATE */
@@ -83,13 +93,14 @@ _saveRow = function(row) {
 }
 
 
-_aggregateForPeriod = function (data, T) {
-  // given data aggreagte by period T and save the aggregated values.  
+_aggregate = function (data) {
+  // given data aggreagte by some possible periods and save the aggregated values.
+
   // only save aggregations that are complete.  ie, if you do not hit the end of the period, do not save!
-  
+  //save by using _saveAggregations
 }
 
-_saveAggregation = function (aggregation) {
+_saveAggregations = function (aggregations) {
 
 }
 

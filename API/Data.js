@@ -15,3 +15,4 @@ Data.init = function(config){
   return Data;
 }
 
+module.exports = Data;

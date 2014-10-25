@@ -1,6 +1,7 @@
 var starfrequency = require('./starfrequency');
 var Data = require('./Data.js');
 var nj = require('nunjucks');
+nj.configure('public', { autoescape: true });
 
 API = {};
 
@@ -21,8 +22,10 @@ API.starfrequency = function(req, res, next) {
 }
 
 API.test = function (req, res , next){
-  res.setHeader('Access-Control-Allow-Origin','*');
-  // res.send(200, nj.renderString('Hello {{ username }}', { username: 'James' }));
+  // res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Content-Type','text/html; charset=utf-8');
+  var renderOpts = { hello: 'world' };
+  res.send(200, nj.render('index.html', renderOpts));
   return next();
 }
 

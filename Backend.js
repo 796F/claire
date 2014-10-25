@@ -10,7 +10,7 @@ server.use(restify.queryParser());  //parses the query string, ie /repo/three.js
 server.use(restify.bodyParser());   //turns requests into js objects automagically
 server.use(restify.CORS());         //configures 'Cross-origin resource sharing'
  
-server.listen(config.backend.port, backend.config.ip, function(){
+server.listen(config.backend.port, config.backend.ip, function(){
     console.log('%s ws now listening on %s ', server.name , server.url);
 });
 

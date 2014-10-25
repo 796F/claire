@@ -1,8 +1,10 @@
 var fs = require('fs');
 var Q = require('q');
+var auth = require('googleapis').auth;
+var bq = require('googleapis').bigquery('v2');
 var vsprintf = require("sprintf-js").vsprintf;
-var GAPI = require('googleapis');
-var bq = GAPI.bigquery('v2');
+
+
 var Data = require('./Data.js');
 
 var COLUMNS = ['repository_url', 'repository_created_at', 'repository_description', 'repository_forks', 'repository_size',
@@ -13,14 +15,14 @@ var BASE_QUERY = 'SELECT ' + COLUMNS.join(', ') + ' FROM githubarchive:github.ti
                  'WHERE repository_owner="%s" AND repository_name="%s" AND created_at > "%s" AND repository_fork="false" '+
                  'ORDER BY created_at ASC';
 
-ONE_HOUR_IN_S = 60 * 60 * 1000;
-ONE_MINUTE_IN_S = 60 * 1000;
+var ONE_HOUR_IN_S = 60 * 60 * 1000;
+var ONE_MINUTE_IN_S = 60 * 1000;
 
 Archive = {};
 
 Archive.init = function(config) {
   var options = config.github_archive
-  Archive.authClient = new GAPI.auth.JWT(options.iss, options.key_path, undefined, options.scope);
+  Archive.authClient = new auth.JWT(options.iss, options.key_path, undefined, options.scope);
   Archive.projectId = options.projectId;
   Archive.targets = config.target_repos;
   Data.init(config, COLUMNS);
@@ -28,8 +30,7 @@ Archive.init = function(config) {
 }
 
 Archive.run = function(options) {
-  // Data.lastScanTimeForRepository('Famous', 'famous').then(console.log);
-  // Data.aggregateRepository('Famous', 'famous').then(console.log);
+  // Data.aggregateRepository('Famous', 'famous');
   _authorize().then(function(){
     _updateData(0);
   }, _authError);
@@ -58,6 +59,7 @@ function _updateData (i) {
   var repository_owner = Archive.targets[i].owner;
   var repository_name = Archive.targets[i].repo;
   console.log('_updateData', repository_owner, repository_name);
+
   return _getLatestDataForRepository(repository_owner, repository_name)
   .then(function(totalRows){
     // if(totalRows > 0) Data.aggregateRepository(repository_owner, repository_name);
@@ -71,7 +73,7 @@ function _updateData (i) {
       })
     }
     
-  }, _latestDataError, Data.saveRows);
+  }, taggedLogger('Error - Getting Latest Data'), Data.saveRows);
 }
 
 function _getLatestDataForRepository (repository_owner, repository_name){
@@ -80,55 +82,56 @@ function _getLatestDataForRepository (repository_owner, repository_name){
     //get the last time we scanned this repo.  
     Data.lastScanTimeForRepository(repository_owner, repository_name)
     .then(function(last_scan_time){
-      //get a good token for this request
-        _refreshAuth()
-        .then(function(){
-          console.log('query for', repository_owner, repository_name, 'starting from', last_scan_time);
-          return vsprintf(BASE_QUERY, [repository_owner, repository_name, last_scan_time]);
-        }, _refreshTokenError)
-        .then(_retriedQuery, _queryError)
-        .then(function(result){
-          var jobId = result.jobReference.jobId;
-          var pageToken = result.pageToken;
+      console.log('query for', repository_owner, repository_name, 'starting from', last_scan_time);
+      var query = vsprintf(BASE_QUERY, [repository_owner, repository_name, last_scan_time]);
 
-          //first page back.  if rows not empty, notify.  
-          if(result.totalRows > 0 ){
-            notify(result.rows);
-          }
-          //if more pages to go, paginate  
-          if(pageToken){
-            console.log('paginating...')
-            _paginate(jobId, pageToken, notify)
-            .then(function(last_page){
-              //end of data, resolve after last page is notified.  
-              console.log('last page got', result.totalRows)
-              resolve(result.totalRows);
-            }, _paginateError);
-          }else{
+      _refreshAuth()
+      .then(_retriedQuery(query), taggedLogger('Error - Refresh Token'))
+      .then(function(result){
+        if(result.jobReference == undefined) {
+          debugger;
+        }
+        var jobId = result.jobReference.jobId;
+        var pageToken = result.pageToken;
+
+        //first page back.  if rows not empty, notify.  
+        if(result.totalRows > 0 ){
+          notify(result.rows);
+        }
+        //if more pages to go, paginate  
+        if(pageToken){
+          console.log('paginating...')
+          _paginate(jobId, pageToken, notify)
+          .then(function(last_page){
+            //end of data, resolve after last page is notified.  
+            console.log('last page got', result.totalRows)
             resolve(result.totalRows);
-          }
-        });
-      });
+          }, taggedLogger('Error - Paginate'));
+        }else{
+          resolve(result.totalRows);
+        }
+      }, taggedLogger('Error - Retried Query'));
     });
+  });
 }
 
-function _refreshTokenError(err){
-  console.log('refresh token error', err);
-}
+
 
 function _retriedQuery(query){
-  return _query(query)
-  .then(function(result){
-    if(result.jobComplete){
-      return result;
-    }else{
-      //incomplete job, most likely rate limited.  try again in a bit.  
-      console.log('incomplete result, waiting a minute then _query');
-      return Q.delay(ONE_MINUTE_IN_S).then(function(){
-        return _retriedQuery(query);
-      });
-    }
-  });
+  return function() {
+    return _query(query)
+    .then(function(result){
+      if(result.jobComplete){
+        return result;
+      }else{
+        //incomplete job, most likely rate limited.  try again in a bit.  
+        console.log('incomplete result, waiting a minute then _query');
+        return Q.delay(ONE_MINUTE_IN_S).then(function(){
+          return _retriedQuery(query)();
+        });
+      }
+    });
+  }
 }
 
 function _query(query){
@@ -158,13 +161,9 @@ function _query(query){
   });
 }
 
-function _queryError(err){
-  console.log('query error', err);
-}
-
 //calls nextPage in a loop on the dataset with next page token until we get all the data.  
 function _paginate (jobId, pageToken, notify) {
-  console.log('paginate', arguments);
+  // console.log('paginate', arguments);
   return _nextPage(jobId, pageToken)
   .then(function(result){
     if(result.jobComplete){
@@ -182,12 +181,9 @@ function _paginate (jobId, pageToken, notify) {
         return _paginate(jobId, result.pageToken, notify);
       });
     }
-  }, _nextPageError);
+  }, taggedLogger('Error - Getting Next Page'));
 }
 
-function _paginateError (err){
-  console.log('paginate err', err);
-}
 //requests a single page of our dataset using a page token.  
 function _nextPage (jobId, pageToken) {
   return Q.Promise(function(resolve, reject, notify){
@@ -208,10 +204,6 @@ function _nextPage (jobId, pageToken) {
   });
 }
 
-function _nextPageError (err){
-  console.log('_nextPageError', err);
-}
-
 function _refreshAuth () {
   return Q.Promise(function(resolve, reject, notify){
     Archive.authClient.refreshToken_(undefined, function(err, result){
@@ -223,12 +215,12 @@ function _refreshAuth () {
   });
 }
 
-function _handleResolve(totalRows){
-  console.log('finished processing', totalRows, 'events');
-}
-
-function _latestDataError(err){
-  console.log('_latestDataError', err);
+function taggedLogger(tag) {
+  //generates a console log with a tag
+  return function(log) {
+    console.log('Tag:', tag);
+    console.log('Log:', log);
+  }
 }
 
 module.exports = Archive;
