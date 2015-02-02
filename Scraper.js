@@ -1,11 +1,14 @@
-var DataStreams = require('./streams');
 var Proxies = require('./proxies');
 var config = require('./config.js');
 
-for(var stream in DataStreams){
-  DataStreams[stream].init(config);
-  DataStreams[stream].run();
-}
+
+// var githubArchiveStream = require('./lib/githubarchive');
+// githubArchiveStream.init(config);
+// githubArchiveStream.run();
+
+var newsletterStream = require('./lib/email');
+newsletterStream.init(config);
+newsletterStream.run();
 
 // var ProxyFactory = require('nonproxy').init(config.github_auth)
 // // var ProxyFactory = require('ec2factory').init(config.ec2)
@@ -18,11 +21,3 @@ for(var stream in DataStreams){
 //     github_auth : config.github_auth
 //   });
 // });
-
-GLOBAL.debug = function(){
-  if(DEBUG) {
-    console.log.apply(this, arguments);
-  }
-}
-
-GLOBAL.DEBUG = config.debug;

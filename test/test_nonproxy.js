@@ -1,7 +1,8 @@
 var config = require('../config.js');
+var nonproxy = require('../proxies/nonproxy');
 
 exports.test_nonproxy = function(test){
-  var nonproxy = require('nonproxy');
+  
   nonproxy.init(config.github_auth).then((function(ready_factory){
     var circ = ready_factory.getProxy();
     circ.get({

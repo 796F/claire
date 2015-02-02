@@ -1,6 +1,6 @@
 var config = require('./config.js');
 var restify = require('restify');
-var API = require('./API').init(config);
+var API = require('./lib/api').init(config);
 
 var server = restify.createServer({
     name : config.backend.name

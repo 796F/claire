@@ -102,7 +102,7 @@ Tor.prototype.request = function (options, callback){
 //get is basically requests but it handles the chunking and parsing and socksport adjusting for you!
 //mostly use this one, has the try block too.
 Tor.prototype.get = function (options) {
-  return Q.Promise((function(resolve, reject, notify) {
+  return Q.Promise(function(resolve, reject, notify) {
     var agent = options.protocol === 'https:' ? shttps : shttp;
     options.socksPort = this.socksPort;
     //required for node issue, https://github.com/joyent/node/issues/5360
@@ -112,6 +112,7 @@ Tor.prototype.get = function (options) {
 
     try{
       var request = agent.get(options, (function(response){
+        debugger;
         var status = response.statusCode;
         var limit = response.headers['x-ratelimit-limit'];
         var remaining = response.headers['x-ratelimit-remaining'];
@@ -140,7 +141,7 @@ Tor.prototype.get = function (options) {
       console.log('error in TOR GET');
       reject(err);
     }
-  }).bind(this));
+  }.bind(this));
 }
 
 function _controlListening (circuitOutput) {
