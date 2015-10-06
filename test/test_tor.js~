@@ -1,4 +1,5 @@
 //contains tests for tor and tor factory 
+var config = require('../config.js');
 
 exports.test_tor = function(test){
   console.log('create new tor circuit')

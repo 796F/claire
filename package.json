@@ -1,23 +1,26 @@
-{ 
-  "name" : "claire",
-  "main" : "init.js",
-  "version" : "0.0.1",
-  "repository" : { 
-    "type" : "git" , 
-    "url" : "https://github.com/xiamike/claire"
+{
+  "name": "claire",
+  "main": "init.js",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiamike/claire"
   },
-  "dependencies" : {
-    "q" : "1.0.1",
-    "underscore" : "1.7.0",
-    "knex" : "0.6.22",
-    "mysql" : "2.4.3",
-    "strftime" : "0.8.2",
-    "sprintf-js" : "0.0.7",
-    "restify" : "2.8.3",
-    "imap" : "0.8.14",
-    "googleapis" : "1.0.19",
+  "devDevpendencies": {
+    "nodeunit": "^0.9.1"
+  },
+  "dependencies": {
+    "googleapis": "1.0.19",
+    "imap": "0.8.14",
+    "knex": "0.6.22",
+    "mysql": "2.4.3",
+    "q": "1.0.1",
+    "restify": "2.8.3",
+    "socks5-http-client": "0.1.6",
+    "socks5-https-client": "0.2.2",
+    "sprintf-js": "0.0.7",
     "stackexchange": "0.2.0",
-    "socks5-https-client" : "0.2.2",
-    "socks5-http-client" : "0.1.6"
+    "strftime": "0.8.2",
+    "underscore": "1.7.0"
   }
 }
